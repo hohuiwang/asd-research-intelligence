@@ -7,6 +7,7 @@
 - Store screened records in `data/autism_research.sqlite3`.
 - Write the digest to `reports/latest-weekly-digest.md`.
 - Write the shareable website to `site/index.html`.
+- Write study-type website subpages under `site/topics/`, including therapy, non-therapy, and medication.
 - Treat journal impact as a triage signal, never proof that a study is good.
 
 ## Default Screening Focus

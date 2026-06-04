@@ -8,6 +8,8 @@ from pathlib import Path
 
 from .config import REPORTS_DIR, SITE_DIR, ensure_workspace_path
 from .journals import journal_tier_for
+from .models import Paper
+from .topics import STUDY_TYPE_NAV, classify_study_type, study_type_matches
 
 
 def write_static_site(rows: list, output_dir: Path | None = None) -> Path:
@@ -18,7 +20,20 @@ def write_static_site(rows: list, output_dir: Path | None = None) -> Path:
 
     payload = _payload_from_rows(rows)
     index_path = site_dir / "index.html"
-    index_path.write_text(_render_html(payload), encoding="utf-8")
+    index_path.write_text(_render_html(payload, active_topic="all", path_prefix=""), encoding="utf-8")
+
+    topics_dir = site_dir / "topics"
+    topics_dir.mkdir(parents=True, exist_ok=True)
+    for nav_item in STUDY_TYPE_NAV:
+        if nav_item.slug == "all":
+            continue
+        topic_dir = topics_dir / nav_item.slug
+        topic_dir.mkdir(parents=True, exist_ok=True)
+        topic_path = topic_dir / "index.html"
+        topic_path.write_text(
+            _render_html(payload, active_topic=nav_item.slug, path_prefix="../../"),
+            encoding="utf-8",
+        )
 
     readme_path = site_dir / "README.md"
     readme_path.write_text(
@@ -29,6 +44,8 @@ def write_static_site(rows: list, output_dir: Path | None = None) -> Path:
                 "This folder is a static website generated from the local ASD research agent database.",
                 "",
                 "Share `index.html` directly, or publish the whole `site/` folder with GitHub Pages, Netlify, Vercel, or any static web host.",
+                "",
+                "Study-type subpages are generated under `topics/`, including `topics/therapy/`, `topics/non-therapy/`, and `topics/medication/`.",
                 "",
                 "Regenerate it with:",
                 "",
@@ -61,6 +78,7 @@ def _payload_from_rows(rows: list) -> dict:
     buckets = _counts_by(papers, "bucket")
     age_tags = _tag_counts(papers)
     journals = _counts_by(papers, "journal")
+    study_types = _study_type_counts(papers)
 
     return {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
@@ -72,6 +90,7 @@ def _payload_from_rows(rows: list) -> dict:
             "excluded": buckets.get("excluded", 0),
         },
         "age_tags": age_tags,
+        "study_types": study_types,
         "top_journals": sorted(journals.items(), key=lambda item: (-item[1], item[0]))[:8],
         "papers": papers,
     }
@@ -84,6 +103,17 @@ def _paper_from_row(row) -> dict:
     reasons = json.loads(row["reasons_json"] or "[]")
     journal_tier = journal_tier_for(row["journal"] or "")
     abstract = (row["abstract"] or "").strip()
+    paper = Paper(
+        pmid=row["pmid"],
+        title=row["title"],
+        abstract=abstract,
+        journal=row["journal"] or "",
+        publication_date=row["publication_date"] or "",
+        doi=row["doi"] or None,
+        authors=tuple(authors),
+        publication_types=tuple(publication_types),
+    )
+    study_type = classify_study_type(paper)
 
     return {
         "pmid": row["pmid"],
@@ -96,6 +126,10 @@ def _paper_from_row(row) -> dict:
         "authors": authors,
         "first_author": authors[0] if authors else "Unknown author",
         "publication_types": publication_types,
+        "study_type_slug": study_type.slug,
+        "study_type_label": study_type.label,
+        "study_type_group": study_type.group,
+        "study_type_reason": study_type.reason,
         "bucket": row["bucket"],
         "included": bool(row["included"]),
         "overall_score": round(float(row["overall_score"] or 0), 3),
@@ -127,20 +161,61 @@ def _tag_counts(papers: list[dict]) -> list[tuple[str, int]]:
     return sorted(counts.items(), key=lambda item: (-item[1], item[0]))
 
 
-def _render_html(payload: dict) -> str:
+def _study_type_counts(papers: list[dict]) -> list[dict]:
+    return [
+        {
+            "slug": nav_item.slug,
+            "label": nav_item.label,
+            "description": nav_item.description,
+            "count": sum(1 for paper in papers if study_type_matches(paper, nav_item.slug)),
+        }
+        for nav_item in STUDY_TYPE_NAV
+    ]
+
+
+def _topic_label(slug: str) -> str:
+    for nav_item in STUDY_TYPE_NAV:
+        if nav_item.slug == slug:
+            return nav_item.label
+    return "All studies"
+
+
+def _render_topic_nav(payload: dict, active_topic: str, path_prefix: str) -> str:
+    links = []
+    for item in payload["study_types"]:
+        href = path_prefix if item["slug"] == "all" else f"{path_prefix}topics/{item['slug']}/"
+        is_active = item["slug"] == active_topic
+        links.append(
+            '<a class="topic-link{active}" href="{href}" title="{description}">'
+            '<span>{label}</span><b>{count}</b></a>'.format(
+                active=" active" if is_active else "",
+                href=escape(href or "./"),
+                description=escape(item["description"]),
+                label=escape(item["label"]),
+                count=item["count"],
+            )
+        )
+    return "\n".join(links)
+
+
+def _render_html(payload: dict, active_topic: str, path_prefix: str) -> str:
     data_json = json.dumps(payload, ensure_ascii=True).replace("<", "\\u003c")
+    active_topic_json = json.dumps(active_topic)
     title = "ASD Research Weekly Update"
+    topic_label = _topic_label(active_topic)
+    page_title = title if active_topic == "all" else f"{title}: {topic_label}"
     total = payload["counts"]["total"]
     accepted = payload["counts"]["accepted"]
     watchlist = payload["counts"]["watchlist"]
     generated = escape(payload["generated_at"])
+    topic_nav = _render_topic_nav(payload, active_topic, path_prefix)
 
     return f"""<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{escape(title)}</title>
+  <title>{escape(page_title)}</title>
   <style>
     :root {{
       --bg: #f7f8fb;
@@ -200,11 +275,34 @@ def _render_html(payload: dict) -> str:
     }}
     .tools {{
       display: grid;
-      grid-template-columns: minmax(240px, 1fr) 190px 190px 170px;
+      grid-template-columns: minmax(220px, 1fr) 190px 190px 170px 170px;
       gap: 12px;
       padding: 14px;
       align-items: end;
     }}
+    .topic-nav {{
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 8px;
+      margin-bottom: 18px;
+    }}
+    .topic-link {{
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      min-height: 44px;
+      padding: 9px 10px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      box-shadow: 0 8px 20px rgba(21, 31, 51, 0.05);
+    }}
+    .topic-link:hover {{ text-decoration: none; border-color: var(--blue); }}
+    .topic-link.active {{ border-color: var(--blue); background: #eef4ff; color: var(--blue); }}
+    .topic-link span {{ font-weight: 800; font-size: 13px; }}
+    .topic-link b {{ font-size: 13px; color: var(--muted); }}
     label {{ display: grid; gap: 6px; color: var(--muted); font-size: 12px; font-weight: 700; text-transform: uppercase; }}
     input, select {{
       width: 100%;
@@ -259,6 +357,7 @@ def _render_html(payload: dict) -> str:
     .badge.accepted {{ color: var(--green); border-color: #9ed5c5; background: #ecf8f4; }}
     .badge.watchlist {{ color: var(--amber); border-color: #e9c27d; background: #fff7e8; }}
     .badge.excluded {{ color: var(--red); border-color: #e6aaa7; background: #fff0f0; }}
+    .badge.study-type {{ color: var(--blue); border-color: #abc4f5; background: #eef4ff; }}
     .breakdown {{ display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }}
     .breakdown div {{ background: #f5f7fa; border: 1px solid #e5e9f0; border-radius: 6px; padding: 8px; min-width: 0; }}
     .breakdown b {{ display: block; font-size: 13px; color: var(--ink); }}
@@ -300,10 +399,17 @@ def _render_html(payload: dict) -> str:
       <div class="metric"><b id="visibleCount">{total}</b><span>Currently visible</span></div>
     </section>
 
+    <nav class="topic-nav" aria-label="Study type pages">
+      {topic_nav}
+    </nav>
+
     <section class="panel" aria-label="Research filters">
       <div class="tools">
         <label>Search
           <input id="searchInput" type="search" placeholder="Title, journal, author, reason">
+        </label>
+        <label>Study Type
+          <select id="studyTypeFilter"></select>
         </label>
         <label>Age Tag
           <select id="ageFilter"></select>
@@ -351,12 +457,13 @@ def _render_html(payload: dict) -> str:
   </script>
   <script>
     const data = window.RESEARCH_DATA;
-    const state = {{ bucket: "all", query: "", age: "all", sort: "score", minScore: 0 }};
+    const state = {{ bucket: "all", query: "", topic: {active_topic_json}, age: "all", sort: "score", minScore: 0 }};
     const paperList = document.getElementById("paperList");
     const visibleCount = document.getElementById("visibleCount");
     const filterSummary = document.getElementById("filterSummary");
     const scoreSummary = document.getElementById("scoreSummary");
     const searchInput = document.getElementById("searchInput");
+    const studyTypeFilter = document.getElementById("studyTypeFilter");
     const ageFilter = document.getElementById("ageFilter");
     const sortSelect = document.getElementById("sortSelect");
     const scoreFilter = document.getElementById("scoreFilter");
@@ -378,6 +485,13 @@ def _render_html(payload: dict) -> str:
         [...tags].sort().map(tag => `<option value="${{clean(tag)}}">${{clean(tag.replaceAll("_", " "))}}</option>`).join("");
     }}
 
+    function fillStudyTypeFilter() {{
+      studyTypeFilter.innerHTML = data.study_types.map(item =>
+        `<option value="${{clean(item.slug)}}">${{clean(item.label)}} (${{item.count}})</option>`
+      ).join("");
+      studyTypeFilter.value = state.topic;
+    }}
+
     function renderBars(id, rows) {{
       const target = document.getElementById(id);
       const max = Math.max(1, ...rows.map(row => row[1]));
@@ -393,9 +507,13 @@ def _render_html(payload: dict) -> str:
     function paperMatches(paper) {{
       const haystack = [
         paper.title, paper.journal, paper.first_author, paper.bucket,
-        paper.age_tags.join(" "), paper.reasons.join(" "), paper.abstract_excerpt
+        paper.study_type_label, paper.study_type_reason, paper.age_tags.join(" "), paper.reasons.join(" "), paper.abstract_excerpt
       ].join(" ").toLowerCase();
       return (state.bucket === "all" || paper.bucket === state.bucket)
+        && (state.topic === "all"
+          || (state.topic === "therapy" && paper.study_type_group === "therapy")
+          || (state.topic === "non-therapy" && paper.study_type_group === "non_therapy")
+          || paper.study_type_slug === state.topic)
         && (state.age === "all" || paper.age_tags.includes(state.age))
         && paper.overall_score >= state.minScore
         && (!state.query || haystack.includes(state.query));
@@ -430,6 +548,7 @@ def _render_html(payload: dict) -> str:
           </div>
           <div class="badges">
             <span class="badge ${{clean(paper.bucket)}}">${{bucketLabel(paper.bucket)}}</span>
+            <span class="badge study-type">${{clean(paper.study_type_label)}}</span>
             <span class="badge">${{clean(paper.journal_tier.replaceAll("_", " "))}}</span>
             ${{ageBadges}}
           </div>
@@ -469,10 +588,12 @@ def _render_html(payload: dict) -> str:
       }});
     }});
     searchInput.addEventListener("input", event => {{ state.query = event.target.value.toLowerCase().trim(); render(); }});
+    studyTypeFilter.addEventListener("change", event => {{ state.topic = event.target.value; render(); }});
     ageFilter.addEventListener("change", event => {{ state.age = event.target.value; render(); }});
     sortSelect.addEventListener("change", event => {{ state.sort = event.target.value; render(); }});
     scoreFilter.addEventListener("input", event => {{ state.minScore = Number(event.target.value); render(); }});
 
+    fillStudyTypeFilter();
     fillAgeFilter();
     renderBars("ageChart", data.age_tags);
     renderBars("journalChart", data.top_journals);

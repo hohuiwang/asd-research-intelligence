@@ -36,6 +36,14 @@ The shareable website will be written to:
 site/index.html
 ```
 
+Study-type subpages are written to:
+
+```text
+site/topics/therapy/index.html
+site/topics/non-therapy/index.html
+site/topics/medication/index.html
+```
+
 If live PubMed access fails with a certificate error on macOS, run:
 
 ```bash
@@ -56,6 +64,14 @@ python3 -m unittest discover -s tests
 ```
 
 To share the website, send `site/index.html` directly or publish the `site/` folder with any static host.
+
+The public GitHub Pages links will also support study-type pages such as:
+
+```text
+https://YOUR-USERNAME.github.io/YOUR-REPO/topics/therapy/
+https://YOUR-USERNAME.github.io/YOUR-REPO/topics/non-therapy/
+https://YOUR-USERNAME.github.io/YOUR-REPO/topics/medication/
+```
 
 ## Scoring
 
