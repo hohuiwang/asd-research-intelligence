@@ -129,7 +129,7 @@ def _tag_counts(papers: list[dict]) -> list[tuple[str, int]]:
 
 def _render_html(payload: dict) -> str:
     data_json = json.dumps(payload, ensure_ascii=True).replace("<", "\\u003c")
-    title = "ASD Research Intelligence"
+    title = "ASD Research Weekly Update"
     total = payload["counts"]["total"]
     accepted = payload["counts"]["accepted"]
     watchlist = payload["counts"]["watchlist"]
@@ -284,7 +284,7 @@ def _render_html(payload: dict) -> str:
   <div class="shell">
     <header>
       <div>
-        <h1>ASD Research Intelligence</h1>
+        <h1>{escape(title)}</h1>
         <p class="subtitle">High-impact autism research triage, weighted toward under-25 populations with selected adult ASD studies retained for clinical and lifespan relevance.</p>
       </div>
       <div class="meta">

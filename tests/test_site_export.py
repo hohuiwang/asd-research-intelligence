@@ -34,7 +34,7 @@ class SiteExportTest(unittest.TestCase):
             index_path = write_static_site(rows, output_dir=Path(temp_dir) / "site")
             html = index_path.read_text(encoding="utf-8")
 
-        self.assertIn("ASD Research Intelligence", html)
+        self.assertIn("ASD Research Weekly Update", html)
         self.assertIn("Randomized intervention study", html)
         self.assertIn("JAMA Psychiatry", html)
         self.assertIn("window.RESEARCH_DATA", html)
