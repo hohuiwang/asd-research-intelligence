@@ -5,7 +5,8 @@ This project exports a static website to `site/index.html`. GitHub Pages can pub
 ## One-Time Setup
 
 1. Create a new GitHub repository.
-2. In this folder, initialize Git and push to GitHub:
+2. Create a GitHub personal access token for the push. If using **Tokens (classic)**, select both `repo` and `workflow`, because this repository includes `.github/workflows/pages.yml`.
+3. In this folder, initialize Git and push to GitHub:
 
 ```bash
 git init
