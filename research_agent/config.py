@@ -15,6 +15,13 @@ PUBMED_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 DEFAULT_THRESHOLD = 0.70
 WATCHLIST_THRESHOLD = 0.50
 
+SCORE_WEIGHTS = {
+    "venue": 0.278,
+    "article_impact": 0.222,
+    "methods_quality": 0.389,
+    "novelty": 0.111,
+}
+
 
 def ensure_workspace_path(path: Path | str) -> Path | str:
     if str(path) == ":memory:":

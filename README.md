@@ -49,12 +49,37 @@ Useful options:
 ```bash
 python -m research_agent.cli run-weekly --days 14 --journal-scope high-impact --population-scope priority
 python -m research_agent.cli run-weekly --days 14 --journal-scope broad --population-scope all
+python -m research_agent.cli rescore
 python -m research_agent.cli export-site
 python -m research_agent.cli serve-site --port 8000
 python3 -m unittest discover -s tests
 ```
 
 To share the website, send `site/index.html` directly or publish the `site/` folder with any static host.
+
+## Scoring
+
+The score weights are in `research_agent/config.py` as `SCORE_WEIGHTS`.
+
+Current formula:
+
+```text
+overall_score =
+  0.278 * venue_score +
+  0.222 * article_impact_score +
+  0.389 * methods_quality_score +
+  0.111 * novelty_score
+```
+
+Age relevance is still tagged and displayed for filtering, but it is no longer part of the numeric overall score.
+
+Accepted papers default to `overall_score >= 0.70`; watchlist papers default to `overall_score >= 0.50`.
+
+After changing score weights, run:
+
+```bash
+python3 -m research_agent.cli rescore
+```
 
 ## GitHub Pages
 

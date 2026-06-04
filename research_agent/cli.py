@@ -3,9 +3,11 @@ from __future__ import annotations
 import argparse
 import functools
 import http.server
+import json
 import socketserver
 
 from .config import SITE_DIR
+from .models import Paper
 from .pubmed import fetch_recent_papers
 from .reports import write_weekly_digest
 from .samples import SAMPLE_PAPERS
@@ -21,6 +23,7 @@ def main() -> None:
     subparsers.add_parser("init-db", help="Create the local SQLite database")
     subparsers.add_parser("demo", help="Run the pipeline with built-in sample papers")
     subparsers.add_parser("export-site", help="Generate the static website from screened papers")
+    subparsers.add_parser("rescore", help="Recompute stored paper scores and regenerate report/site outputs")
 
     serve_parser = subparsers.add_parser("serve-site", help="Generate and preview the static website locally")
     serve_parser.add_argument("--host", default="127.0.0.1", help="Host interface for the preview server")
@@ -78,6 +81,23 @@ def main() -> None:
         print(f"Website written to {site_path}")
         return
 
+    if args.command == "rescore":
+        with connect() as conn:
+            init_db(conn)
+            rows = load_screened_papers(conn)
+            papers = [_paper_from_row(row) for row in rows]
+            for paper in papers:
+                upsert_score(conn, paper, score_paper(paper))
+
+            rescored_rows = load_screened_papers(conn)
+            report_path = write_weekly_digest(rescored_rows)
+            site_path = write_static_site(rescored_rows)
+
+        print(f"Rescored {len(papers)} stored papers.")
+        print(f"Report written to {report_path}")
+        print(f"Website written to {site_path}")
+        return
+
     if args.command == "serve-site":
         with connect() as conn:
             init_db(conn)
@@ -123,6 +143,19 @@ def main() -> None:
         print(f"Report written to {report_path}")
         print(f"Website written to {site_path}")
         return
+
+
+def _paper_from_row(row) -> Paper:
+    return Paper(
+        pmid=row["pmid"],
+        title=row["title"],
+        abstract=row["abstract"] or "",
+        journal=row["journal"] or "",
+        publication_date=row["publication_date"] or "",
+        doi=row["doi"] or None,
+        authors=tuple(json.loads(row["authors_json"] or "[]")),
+        publication_types=tuple(json.loads(row["publication_types_json"] or "[]")),
+    )
 
 
 if __name__ == "__main__":

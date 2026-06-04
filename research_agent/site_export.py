@@ -437,7 +437,7 @@ def _render_html(payload: dict) -> str:
             <div><b>${{paper.venue_score.toFixed(2)}}</b><span>Venue</span></div>
             <div><b>${{paper.article_impact_score.toFixed(2)}}</b><span>Impact</span></div>
             <div><b>${{paper.methods_quality_score.toFixed(2)}}</b><span>Methods</span></div>
-            <div><b>${{paper.age_relevance_score.toFixed(2)}}</b><span>Age fit</span></div>
+            <div><b>${{paper.age_relevance_score.toFixed(2)}}</b><span>Age tracked</span></div>
             <div><b>${{paper.novelty_score.toFixed(2)}}</b><span>Novelty</span></div>
           </div>
           <p class="abstract">${{clean(paper.abstract_excerpt || "No abstract available from PubMed.")}}</p>

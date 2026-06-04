@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from .config import DEFAULT_THRESHOLD, WATCHLIST_THRESHOLD
+from .config import DEFAULT_THRESHOLD, SCORE_WEIGHTS, WATCHLIST_THRESHOLD
 from .journals import journal_tier_for
 from .models import Paper, Score
 
@@ -84,12 +84,11 @@ def score_paper(paper: Paper) -> Score:
         low_value_reasons = low_value_types + low_value_text_signals
         exclusion_reasons.append(f"excluded low-value publication signal by default: {', '.join(low_value_reasons)}")
 
-    overall = (
-        0.25 * venue_score
-        + 0.20 * article_score
-        + 0.35 * methods_score
-        + 0.10 * age_score
-        + 0.10 * novelty_score
+    overall = _weighted_overall_score(
+        venue_score=venue_score,
+        article_score=article_score,
+        methods_score=methods_score,
+        novelty_score=novelty_score,
     )
 
     included = overall >= DEFAULT_THRESHOLD and not low_value_types and not low_value_text_signals
@@ -116,6 +115,21 @@ def score_paper(paper: Paper) -> Score:
         reasons=reasons,
         included=included,
         bucket=bucket,
+    )
+
+
+def _weighted_overall_score(
+    *,
+    venue_score: float,
+    article_score: float,
+    methods_score: float,
+    novelty_score: float,
+) -> float:
+    return (
+        SCORE_WEIGHTS["venue"] * venue_score
+        + SCORE_WEIGHTS["article_impact"] * article_score
+        + SCORE_WEIGHTS["methods_quality"] * methods_score
+        + SCORE_WEIGHTS["novelty"] * novelty_score
     )
 
 

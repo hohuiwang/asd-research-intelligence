@@ -68,7 +68,7 @@ def _paper_section(row) -> list[str]:
         f"- Journal tier: {journal_tier_name}",
         f"- Score: {row['overall_score']:.3f}",
         f"- Age tags: {', '.join(age_tags)}",
-        f"- Score breakdown: venue {row['venue_score']:.2f}, article impact {row['article_impact_score']:.2f}, methods {row['methods_quality_score']:.2f}, age {row['age_relevance_score']:.2f}, novelty {row['novelty_score']:.2f}",
+        f"- Score breakdown: venue {row['venue_score']:.2f}, article impact {row['article_impact_score']:.2f}, methods {row['methods_quality_score']:.2f}, novelty {row['novelty_score']:.2f}; age fit tracked separately {row['age_relevance_score']:.2f}",
         "- Why it passed/watched:",
         *[f"  - {reason}" for reason in reasons[:6]],
         "",
