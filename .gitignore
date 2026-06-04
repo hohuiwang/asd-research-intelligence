@@ -1,0 +1,9 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+.venv/
+
+# Local generated state. The shareable public artifact is site/index.html.
+data/*.sqlite3
+reports/*.md
+site/preview-*.png
