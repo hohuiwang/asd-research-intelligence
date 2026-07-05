@@ -3,6 +3,8 @@ name: Deploy Website To GitHub Pages
 on:
   push:
     branches: ["main"]
+  schedule:
+    - cron: "0 14 * * 1"
   workflow_dispatch:
 
 permissions:
@@ -20,9 +22,26 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
+    env:
+      PUBMED_CONTACT_EMAIL: ${{ secrets.PUBMED_CONTACT_EMAIL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Validate PubMed contact email
+        run: |
+          if [ -z "${PUBMED_CONTACT_EMAIL}" ]; then
+            echo "Missing required secret: PUBMED_CONTACT_EMAIL" >&2
+            exit 1
+          fi
+
+      - name: Refresh ASD weekly digest and site export
+        run: python3 -m research_agent.cli run-weekly --days 14 --max-results 50 --journal-scope high-impact --population-scope priority
 
       - name: Configure Pages
         uses: actions/configure-pages@v6

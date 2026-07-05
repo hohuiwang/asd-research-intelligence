@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 
@@ -9,7 +10,7 @@ REPORTS_DIR = ROOT_DIR / "reports"
 SITE_DIR = ROOT_DIR / "site"
 DB_PATH = DATA_DIR / "autism_research.sqlite3"
 
-APP_EMAIL = "your-email@example.com"
+APP_EMAIL = os.environ.get("PUBMED_CONTACT_EMAIL", "your-email@example.com")
 PUBMED_BASE_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils"
 
 DEFAULT_THRESHOLD = 0.70

@@ -1,6 +1,7 @@
 # Publish With GitHub Pages
 
 This project exports a static website to `site/index.html`. GitHub Pages can publish that folder with the included workflow at `.github/workflows/pages.yml`.
+The workflow now regenerates the ASD digest before every deployment and also runs on a weekly schedule.
 
 ## One-Time Setup
 
@@ -20,7 +21,8 @@ git push -u origin main
 3. In GitHub, open the repository settings.
 4. Go to **Pages**.
 5. Under **Build and deployment**, choose **GitHub Actions**.
-6. Open the **Actions** tab and wait for **Deploy Website To GitHub Pages** to finish.
+6. Add a repository secret named `PUBMED_CONTACT_EMAIL` with a real contact email for NCBI PubMed requests.
+7. Open the **Actions** tab and wait for **Deploy Website To GitHub Pages** to finish.
 
 GitHub will show the public site URL on the workflow run and in **Settings > Pages**.
 
@@ -40,7 +42,12 @@ git commit -m "Update ASD research digest"
 git push
 ```
 
-The GitHub Pages workflow will redeploy automatically after the push.
+The GitHub Pages workflow will regenerate the screen and redeploy automatically after the push.
+
+## Automatic Refresh Schedule
+
+The workflow also runs every Monday at 14:00 UTC.
+That means the published site can refresh even if nobody manually runs the agent or pushes a new commit that week.
 
 ## Privacy Note
 

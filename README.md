@@ -8,7 +8,7 @@ The first version uses only Python's standard library:
 - SQLite storage
 - Rule-based age/design/impact scoring tuned for under-25 ASD research, with adult ASD companion tracking
 - Markdown weekly digest generation
-- Static website export for sharing screened papers with colleagues
+- GitHub Pages-ready static dashboard export for sharing screened papers with colleagues
 
 The agent keeps its database, reports, tests, and configuration inside this folder. Live discovery still calls PubMed for current article metadata; local writes outside this workspace are refused.
 
@@ -34,6 +34,14 @@ The shareable website will be written to:
 
 ```text
 site/index.html
+```
+
+The export now includes a full ASD dashboard bundle:
+
+```text
+site/styles.css
+site/app.js
+site/assets/research-banner.svg
 ```
 
 Study-type subpages are written to:
@@ -100,6 +108,7 @@ python3 -m research_agent.cli rescore
 ## GitHub Pages
 
 This repo includes a GitHub Actions workflow that publishes the generated `site/` folder to GitHub Pages.
+The workflow can now regenerate the latest PubMed-backed site export on push and on a weekly schedule, as long as the repository secret `PUBMED_CONTACT_EMAIL` is configured.
 
 See:
 
