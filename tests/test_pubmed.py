@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import unittest
+from unittest.mock import patch
 
 from research_agent.journals import high_impact_journal_query, journal_tier_for
-from research_agent.pubmed import build_search_query
+from research_agent.pubmed import _get_text, build_search_query
 
 
 class PubMedQueryTest(unittest.TestCase):
@@ -90,6 +91,19 @@ class PubMedQueryTest(unittest.TestCase):
 
         self.assertTrue(query.startswith("("))
         self.assertIn('"Molecular Autism"[Journal]', query)
+
+    @patch("urllib.request.urlopen")
+    def test_pubmed_requests_use_post_when_params_are_supplied(self, mock_urlopen) -> None:
+        response = mock_urlopen.return_value.__enter__.return_value
+        response.read.return_value = b"{}"
+
+        _get_text("https://example.test/esearch.fcgi", params={"term": "autism", "retmax": "50"})
+
+        request = mock_urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "https://example.test/esearch.fcgi")
+        self.assertEqual(request.get_method(), "POST")
+        self.assertEqual(request.data, b"term=autism&retmax=50")
+        self.assertEqual(request.headers["Content-type"], "application/x-www-form-urlencoded")
 
 
 if __name__ == "__main__":

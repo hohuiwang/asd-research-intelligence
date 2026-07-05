@@ -94,8 +94,8 @@ def search_pubmed(
         "tool": "autism_research_agent",
         "email": APP_EMAIL,
     }
-    url = f"{PUBMED_BASE_URL}/esearch.fcgi?{urllib.parse.urlencode(params)}"
-    data = _get_json(url)
+    url = f"{PUBMED_BASE_URL}/esearch.fcgi"
+    data = _get_json(url, params=params)
     return data.get("esearchresult", {}).get("idlist", [])
 
 
@@ -110,8 +110,8 @@ def fetch_pubmed_details(pmids: list[str]) -> list[Paper]:
         "tool": "autism_research_agent",
         "email": APP_EMAIL,
     }
-    url = f"{PUBMED_BASE_URL}/efetch.fcgi?{urllib.parse.urlencode(params)}"
-    xml_text = _get_text(url)
+    url = f"{PUBMED_BASE_URL}/efetch.fcgi"
+    xml_text = _get_text(url, params=params)
     root = ET.fromstring(xml_text)
     return [_parse_article(article) for article in root.findall(".//PubmedArticle")]
 
@@ -218,12 +218,18 @@ def _child_text(root: ET.Element, child_name: str) -> str:
     return (node.text or "").strip() if node is not None else ""
 
 
-def _get_json(url: str) -> dict:
-    return json.loads(_get_text(url))
+def _get_json(url: str, params: dict[str, str] | None = None) -> dict:
+    return json.loads(_get_text(url, params=params))
 
 
-def _get_text(url: str) -> str:
-    request = urllib.request.Request(url, headers={"User-Agent": "autism-research-agent/0.1"})
+def _get_text(url: str, params: dict[str, str] | None = None) -> str:
+    body = None
+    headers = {"User-Agent": "autism-research-agent/0.1"}
+    if params is not None:
+        body = urllib.parse.urlencode(params).encode("utf-8")
+        headers["Content-Type"] = "application/x-www-form-urlencoded"
+
+    request = urllib.request.Request(url, data=body, headers=headers)
     try:
         with urllib.request.urlopen(request, timeout=30) as response:
             return response.read().decode("utf-8")
